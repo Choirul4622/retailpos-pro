@@ -1,6 +1,6 @@
 // ============================================
 // API WRAPPER FOR GOOGLE APPS SCRIPT
-// Menggunakan Fetch API murni, tanpa google.script.run
+// Menggunakan Fetch API murni
 // ============================================
 
 class POSAPI {
@@ -10,11 +10,10 @@ class POSAPI {
 
   async call(action, data = {}) {
     try {
-      console.log(`Calling API: ${action}`, data);
+      console.log(`📡 API Call: ${action}`, data);
       
       const response = await fetch(this.apiUrl, {
         method: 'POST',
-        mode: 'cors',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -25,37 +24,15 @@ class POSAPI {
       });
       
       if (!response.ok) {
-        // Jika unauthorized (401), coba tanpa credentials
-        if (response.status === 401) {
-          console.warn('Unauthorized, trying without credentials...');
-          const retryResponse = await fetch(this.apiUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              action: action,
-              data: data
-            })
-          });
-          
-          if (!retryResponse.ok) {
-            throw new Error(`HTTP error! status: ${retryResponse.status}`);
-          }
-          
-          const result = await retryResponse.json();
-          return result;
-        }
-        
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
       const result = await response.json();
-      console.log(`API Response for ${action}:`, result);
+      console.log(`✅ API Response (${action}):`, result);
       return result;
       
     } catch (error) {
-      console.error('API Error:', error);
+      console.error(`❌ API Error (${action}):`, error);
       throw error;
     }
   }
@@ -114,18 +91,19 @@ class POSAPI {
   }
 }
 
-// Initialize API - GANTI DENGAN URL DEPLOYMENT ANDA
-const API_URL = 'https://script.google.com/macros/s/AKfycbzDgZwWjdwvqPPbch3Z4DNqoiYPnXn7ttm2WUaWDMo4ofkmBuw4R0gYaODlMz4D9uz-2w/exec';
-const posAPI = new POSAPI(API_URL);
+// Initialize API
+const posAPI = new POSAPI(CONFIG.API_URL);
 
 // Test connection on load
 window.addEventListener('DOMContentLoaded', async () => {
   try {
-    console.log('Testing API connection...');
+    console.log('🔌 Testing API connection...');
     const config = await posAPI.getSystemConfig();
-    console.log('API connected successfully:', config);
+    console.log('✅ API connected successfully:', config);
+    document.getElementById('systemVersion').textContent = `v${config.VERSION} • Online`;
   } catch (error) {
-    console.error('API connection failed:', error);
+    console.error('❌ API connection failed:', error);
+    document.getElementById('systemVersion').textContent = 'v4.0 • Offline';
     showToast('Cannot connect to server. Please check your internet connection.', 'error');
   }
 });
