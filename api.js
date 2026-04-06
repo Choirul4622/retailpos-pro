@@ -95,4 +95,4 @@ class POSAPI {
 }
 
 // Initialize API
-const posAPI = new POSAPI(CONFIG.API_URL);
+const posAPI = new POSAPI('https://script.google.com/macros/s/AKfycbzDgZwWjdwvqPPbch3Z4DNqoiYPnXn7ttm2WUaWDMo4ofkmBuw4R0gYaODlMz4D9uz-2w/exec');
