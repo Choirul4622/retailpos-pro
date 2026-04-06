@@ -1,5 +1,6 @@
 // ============================================
 // CONFIGURATION - SUPERMARKET POS
+// GANTI API_URL dengan URL deployment Google Apps Script Anda
 // ============================================
 
 const CONFIG = {
@@ -9,12 +10,12 @@ const CONFIG = {
   PPN_RATE: 0.11,
   MIN_STOCK_ALERT: 10,
   
-  // Google Apps Script Web App URL (GANTI DENGAN URL DEPLOYMENT ANDA)
-  // Cara mendapatkan URL: Deploy > New deployment > Web app > Get URL
+  // ⚠️ GANTI DENGAN URL DEPLOYMENT GOOGLE APPS SCRIPT ANDA ⚠️
+  // Cara mendapatkan: Deploy > New deployment > Web app > Copy URL
   API_URL: 'https://script.google.com/macros/s/AKfycbzDgZwWjdwvqPPbch3Z4DNqoiYPnXn7ttm2WUaWDMo4ofkmBuw4R0gYaODlMz4D9uz-2w/exec'
 };
 
-// Export untuk digunakan di file lain
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = CONFIG;
+// Export untuk penggunaan global
+if (typeof window !== 'undefined') {
+  window.CONFIG = CONFIG;
 }
