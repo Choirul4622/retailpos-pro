@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supermarket POS - macOS Style</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay hidden" id="loadingOverlay">
+    <div class="spinner"></div>
+    <p>Processing...</p>
+  </div>
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="logo">
+        <h1><i class="fas fa-shopping-cart"></i> Supermarket POS</h1>
+        <p id="systemVersion">v4.0 • Transaction ID Ready</p>
+      </div>
+      
+      <div class="nav-menu">
+        <div class="nav-item active" onclick="showPage('dashboard')">
+          <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
+          <span>Dashboard</span>
+        </div>
+        <div class="nav-item" onclick="showPage('pos')">
+          <div class="nav-icon"><i class="fas fa-cash-register"></i></div>
+          <span>POS Transaction</span>
+        </div>
+        <div class="nav-item" onclick="showPage('inventory')">
+          <div class="nav-icon"><i class="fas fa-boxes"></i></div>
+          <span>Inventory</span>
+        </div>
+        <div class="nav-item" onclick="showPage('products')">
+          <div class="nav-icon"><i class="fas fa-barcode"></i></div>
+          <span>Products</span>
+        </div>
+        <div class="nav-item" onclick="showPage('reports')">
+          <div class="nav-icon"><i class="fas fa-chart-bar"></i></div>
+          <span>Reports</span>
+        </div>
+        <div class="nav-item" onclick="showPage('settings')">
+          <div class="nav-icon"><i class="fas fa-cog"></i></div>
+          <span>Settings</span>
+        </div>
+      </div>
+      
+      <div class="user-section">
+        <div class="user-info" id="userInfo">
+          <i class="fas fa-user-circle"></i>
+          <span id="currentUser">Loading...</span>
+        </div>
+        <div style="margin-top: 12px; font-size: 11px; color: var(--macos-gray-4); text-align: center;">
+          <span id="currentTime">--:--:--</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Dashboard Page -->
+      <div id="dashboardPage" class="page-content">
+        <div class="page-header">
+          <h2><i class="fas fa-chart-line"></i> Dashboard Overview</h2>
+          <div class="header-actions">
+            <button class="btn btn-secondary" onclick="refreshDashboard()" id="refreshDashboardBtn">
+              <i class="fas fa-sync-alt"></i> Refresh Dashboard
+            </button>
+            <div class="last-updated">
+              <i class="fas fa-clock"></i>
+              Last updated: <span id="lastUpdatedTime">Never</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card">
+            <div class="stat-label"><i class="fas fa-money-bill-wave"></i> TODAY'S SALES</div>
+            <div class="stat-value" id="todaySales">Rp 0</div>
+            <div class="stat-change" id="todayTransactions">0 transactions today</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label"><i class="fas fa-shopping-cart"></i> TODAY'S TRANSACTIONS</div>
+            <div class="stat-value" id="totalTransactions">0</div>
+            <div class="stat-change" id="avgTransaction">Avg: Rp 0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label"><i class="fas fa-boxes"></i> TOTAL PRODUCTS</div>
+            <div class="stat-value" id="totalProducts">0</div>
+            <div class="stat-change" id="inventoryValue">Value: Rp 0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label"><i class="fas fa-exclamation-triangle"></i> STOCK ALERTS</div>
+            <div class="stat-value" id="stockAlerts">0</div>
+            <div class="stat-change" id="alertDetails">0 low, 0 out</div>
+          </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 32px;">
+          <div class="chart-container">
+            <h3><i class="fas fa-chart-area"></i> Sales Trend (Last 7 Days)</h3>
+            <div style="height: 300px;">
+              <canvas id="salesChart"></canvas>
+            </div>
+          </div>
+          
+          <div class="chart-container">
+            <h3><i class="fas fa-chart-pie"></i> Sales by Category</h3>
+            <div style="height: 300px;">
+              <canvas id="categoryChart"></canvas>
+            </div>
+          </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+          <div class="table-container">
+            <h3><i class="fas fa-history"></i> Recent Transactions</h3>
+            <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 12px; color: var(--macos-gray-4);">Last 10 transactions</span>
+              <button class="btn btn-sm btn-secondary" onclick="loadMoreTransactions()">
+                <i class="fas fa-plus"></i> Load More
+              </button>
+            </div>
+            <table class="table" id="recentTransactionsTable">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>ID</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="recentTransactionsBody"></tbody>
+            </table>
+          </div>
+          
+          <div class="table-container">
+            <h3><i class="fas fa-exclamation-circle"></i> Low Stock Alert</h3>
+            <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 12px; color: var(--macos-gray-4);">Products need attention</span>
+              <button class="btn btn-sm btn-secondary" onclick="showAllAlerts()">
+                <i class="fas fa-eye"></i> View All
+              </button>
+            </div>
+            <table class="table" id="stockAlertsTable">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Stock</th>
+                  <th>Min</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="stockAlertsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      
+      <!-- POS Transaction Page -->
+      <div id="posPage" class="page-content hidden">
+        <div class="page-header">
+          <h2><i class="fas fa-cash-register"></i> Point of Sale</h2>
+          <div class="header-actions">
+            <button class="btn btn-secondary" onclick="showQuickActions()">
+              <i class="fas fa-bolt"></i> Quick Actions
+            </button>
+            <button class="btn btn-danger" onclick="clearCart()">
+              <i class="fas fa-trash"></i> Clear Cart
+            </button>
+            <button class="btn btn-success" onclick="processTransaction()">
+              <i class="fas fa-check-circle"></i> Complete Sale
+            </button>
+          </div>
+        </div>
+        
+        <div class="pos-container">
+          <div class="pos-products">
+            <div class="search-container">
+              <div class="search-box">
+                <input type="text" class="search-input" id="productSearch" 
+                       placeholder="Scan barcode or search product name..." 
+                       onkeyup="searchProductsPOS(event)"
+                       onkeydown="handleBarcodeScan(event)"
+                       autofocus>
+                <div class="shortcut-hint">Press F2 to focus</div>
+              </div>
+            </div>
+            <div class="product-grid" id="productGridPOS"></div>
+          </div>
+          
+          <div class="pos-cart">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+              <h3><i class="fas fa-shopping-cart"></i> Shopping Cart</h3>
+              <span class="badge-in-stock" id="cartItemCount">0 items</span>
+            </div>
+            
+            <div class="cart-items" id="cartItems">
+              <div class="empty-state">
+                <i class="fas fa-shopping-cart"></i>
+                <h4>Cart is Empty</h4>
+                <p>Add products from the left panel</p>
+              </div>
+            </div>
+            
+            <div class="cart-summary">
+              <div class="summary-line">
+                <span>Subtotal:</span>
+                <span id="cartSubtotal">Rp 0</span>
+              </div>
+              <div class="summary-line">
+                <span>Tax (11%):</span>
+                <span id="cartTax">Rp 0</span>
+              </div>
+              <div class="summary-line">
+                <span>Discount:</span>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <span id="cartDiscount">Rp 0</span>
+                  <button class="btn btn-sm btn-secondary" onclick="showDiscountModal()">
+                    <i class="fas fa-percentage"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="summary-line total">
+                <span>TOTAL:</span>
+                <span id="cartTotal">Rp 0</span>
+              </div>
+              
+              <div class="form-group mt-24">
+                <label class="form-label"><i class="fas fa-credit-card"></i> Payment Method</label>
+                <select class="form-control" id="paymentMethod">
+                  <option value="CASH">Cash</option>
+                  <option value="DEBIT_CARD">Debit Card</option>
+                  <option value="CREDIT_CARD">Credit Card</option>
+                  <option value="QRIS">QRIS</option>
+                  <option value="TRANSFER">Bank Transfer</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">
+                  <i class="fas fa-money-bill-wave"></i> Payment Amount
+                  <span style="font-size: 12px; color: #8E8E93; font-weight: normal;">
+                    (Change: <span id="changeAmount">Rp 0</span>)
+                  </span>
+                </label>
+                
+                <div style="display: flex; gap: 10px; align-items: center;">
+                  <input type="number" class="form-control" id="paymentAmount" 
+                         placeholder="Enter payment amount" min="0" step="1000"
+                         style="flex: 1;"
+                         oninput="calculatePaymentChange()">
+                  
+                  <div style="display: flex; gap: 4px;">
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="setExactPayment()">
+                      <i class="fas fa-equals"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="suggestPaymentAmount()">
+                      <i class="fas fa-lightbulb"></i>
+                    </button>
+                  </div>
+                </div>
+                
+                <div class="payment-quick-buttons">
+                  <button type="button" class="payment-btn" onclick="addToPayment(5000)">+5K</button>
+                  <button type="button" class="payment-btn" onclick="addToPayment(10000)">+10K</button>
+                  <button type="button" class="payment-btn" onclick="addToPayment(20000)">+20K</button>
+                  <button type="button" class="payment-btn" onclick="addToPayment(50000)">+50K</button>
+                  <button type="button" class="payment-btn" onclick="addToPayment(100000)">+100K</button>
+                  <button type="button" class="payment-btn" onclick="clearPayment()" style="color: #FF3B30;">Clear</button>
+                </div>
+              </div>
+              
+              <div class="summary-line">
+                <span>Change:</span>
+                <span id="cartChange" style="font-weight: 700;">Rp 0</span>
+              </div>
+              
+              <button class="btn btn-primary btn-block mt-24" onclick="processTransaction()">
+                <i class="fas fa-check-circle"></i> Complete Transaction
+              </button>
+              
+              <div style="margin-top: 16px; text-align: center;">
+                <button class="btn btn-sm btn-secondary" onclick="saveCartAsDraft()">
+                  <i class="fas fa-save"></i> Save as Draft
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="loadDraftCart()">
+                  <i class="fas fa-history"></i> Load Draft
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Inventory Page -->
+      <div id="inventoryPage" class="page-content hidden">
+        <div class="page-header">
+          <h2><i class="fas fa-boxes"></i> Inventory Management</h2>
+          <div class="header-actions">
+            <button class="btn btn-secondary" onclick="exportInventory()">
+              <i class="fas fa-download"></i> Export
+            </button>
+            <button class="btn btn-primary" onclick="showAddProductModal()">
+              <i class="fas fa-plus"></i> Add Product
+            </button>
+            <button class="btn btn-success" onclick="showBulkRestockModal()">
+              <i class="fas fa-box-open"></i> Bulk Restock
+            </button>
+          </div>
+        </div>
+        
+        <div class="search-container mb-24">
+          <div class="search-box">
+            <input type="text" class="search-input" id="inventorySearch" 
+                   placeholder="Search inventory..." onkeyup="searchInventory()">
+          </div>
+        </div>
+        
+        <div class="stats-grid" id="inventoryStats"></div>
+        
+        <div class="table-container">
+          <h3><i class="fas fa-list"></i> Product Inventory</h3>
+          <table class="table" id="inventoryTable">
+            <thead>
+              <tr>
+                <th>Product ID</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Stock</th>
+                <th>Min Stock</th>
+                <th>Price</th>
+                <th>Value</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="inventoryTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Products Page -->
+      <div id="productsPage" class="page-content hidden">
+        <div class="page-header">
+          <h2><i class="fas fa-barcode"></i> Product Management</h2>
+          <div class="header-actions">
+            <button class="btn btn-secondary" onclick="exportProducts()">
+              <i class="fas fa-download"></i> Export
+            </button>
+            <button class="btn btn-primary" onclick="showAddProductModal()">
+              <i class="fas fa-plus"></i> Add Product
+            </button>
+            <button class="btn btn-success" onclick="showImportModal()">
+              <i class="fas fa-upload"></i> Import
+            </button>
+          </div>
+        </div>
+        
+        <div class="search-container mb-24">
+          <div class="search-box">
+            <input type="text" class="search-input" id="productManagementSearch" 
+                   placeholder="Search products..." onkeyup="searchProductManagement()">
+          </div>
+        </div>
+        
+        <div class="table-container">
+          <table class="table" id="productManagementTable">
+            <thead>
+              <tr>
+                <th>Barcode</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Purchase Price</th>
+                <th>Selling Price</th>
+                <th>Stock</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="productManagementBody"></tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Reports Page -->
+      <div id="reportsPage" class="page-content hidden">
+        <div class="page-header">
+          <h2><i class="fas fa-chart-bar"></i> Reports & Analytics</h2>
+          <div class="header-actions">
+            <button class="btn btn-secondary" onclick="exportReport()">
+              <i class="fas fa-download"></i> Export Report
+            </button>
+            <button class="btn btn-primary" onclick="generateDailyReport()">
+              <i class="fas fa-file-alt"></i> Daily Report
+            </button>
+            <button class="btn btn-success" onclick="generateSalesReport()">
+              <i class="fas fa-chart-bar"></i> Sales Report
+            </button>
+          </div>
+        </div>
+        
+        <div class="chart-container mb-24">
+          <div style="display: flex; gap: 16px; align-items: center;">
+            <div style="flex: 1;">
+              <label class="form-label">Date Range</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="date" id="reportStartDate" class="form-control">
+                <input type="date" id="reportEndDate" class="form-control">
+              </div>
+            </div>
+            <div style="flex: 1;">
+              <label class="form-label">Category</label>
+              <select class="form-control" id="reportCategory">
+                <option value="">All Categories</option>
+                <option value="Food & Beverage">Food & Beverage</option>
+                <option value="Household">Household</option>
+                <option value="Personal Care">Personal Care</option>
+                <option value="Electronics">Electronics</option>
+              </select>
+            </div>
+            <div>
+              <button class="btn btn-primary" onclick="loadReportsData()" style="margin-top: 24px;">
+                <i class="fas fa-filter"></i> Apply Filters
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="stats-grid" id="reportStats"></div>
+        
+        <div class="table-container">
+          <h3><i class="fas fa-history"></i> Transaction History</h3>
+          <table class="table" id="reportTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Transaction ID</th>
+                <th>Items</th>
+                <th>Subtotal</th>
+                <th>Tax</th>
+                <th>Total</th>
+                <th>Payment Method</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="reportTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Settings Page -->
+      <div id="settingsPage" class="page-content hidden">
+        <div class="page-header">
+          <h2><i class="fas fa-cog"></i> System Settings</h2>
+        </div>
+        
+        <div class="chart-container">
+          <h3><i class="fas fa-sliders-h"></i> Configuration</h3>
+          <div class="form-group">
+            <label class="form-label">Company Name</label>
+            <input type="text" class="form-control" id="companyName" value="SUPERMARKET POS">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Tax Rate (%)</label>
+            <input type="number" class="form-control" id="taxRate" value="11" min="0" max="100" step="0.1">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Default Minimum Stock Alert</label>
+            <input type="number" class="form-control" id="minStockAlert" value="10" min="0">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Receipt Footer Message</label>
+            <textarea class="form-control" id="receiptFooter" rows="3">Thank you for shopping with us!</textarea>
+          </div>
+          
+          <button class="btn btn-primary" onclick="saveSettings()">
+            <i class="fas fa-save"></i> Save Settings
+          </button>
+        </div>
+        
+        <div class="chart-container mt-24">
+          <h3><i class="fas fa-database"></i> System Tools</h3>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <button class="btn btn-secondary" onclick="backupData()">
+              <i class="fas fa-database"></i> Backup Data
+            </button>
+            <button class="btn btn-secondary" onclick="cleanupData()">
+              <i class="fas fa-broom"></i> Cleanup Data
+            </button>
+            <button class="btn btn-secondary" onclick="testSystem()">
+              <i class="fas fa-vial"></i> Test System
+            </button>
+            <button class="btn btn-danger" onclick="resetSystem()">
+              <i class="fas fa-redo"></i> Reset System
+            </button>
+          </div>
+        </div>
+        
+        <div class="chart-container mt-24">
+          <h3><i class="fas fa-info-circle"></i> System Information</h3>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+            <div>
+              <strong>Version:</strong> <span id="systemVersionInfo">4.0.0</span>
+            </div>
+            <div>
+              <strong>Last Backup:</strong> <span id="lastBackup">Never</span>
+            </div>
+            <div>
+              <strong>Total Products:</strong> <span id="totalProductsSettings">0</span>
+            </div>
+            <div>
+              <strong>Total Transactions:</strong> <span id="totalTransactionsSettings">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div id="loading" class="loading hidden">
+        <div class="spinner"></div>
+        <p>Loading system data...</p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modals -->
+  <div id="addProductModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-plus-circle"></i> Add New Product</h3>
+        <button class="modal-close" onclick="closeModal('addProductModal')">&times;</button>
+      </div>
+      
+      <form id="addProductForm" onsubmit="event.preventDefault(); saveProduct();">
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-barcode"></i> Barcode</label>
+          <input type="text" class="form-control" id="productBarcode" placeholder="Leave empty for auto-generation">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-cube"></i> Product Name *</label>
+          <input type="text" class="form-control" id="productName" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-tag"></i> Category</label>
+          <select class="form-control" id="productCategory">
+            <option value="Food & Beverage">Food & Beverage</option>
+            <option value="Household">Household</option>
+            <option value="Personal Care">Personal Care</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-shopping-cart"></i> Purchase Price</label>
+          <input type="number" class="form-control" id="productPurchasePrice" value="0" min="0" step="100">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-tag"></i> Selling Price *</label>
+          <input type="number" class="form-control" id="productSellingPrice" required min="0" step="100">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-box"></i> Initial Stock</label>
+          <input type="number" class="form-control" id="productStock" value="0" min="0">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-exclamation-triangle"></i> Minimum Stock</label>
+          <input type="number" class="form-control" id="productMinStock" value="10" min="0">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-info-circle"></i> Description (Optional)</label>
+          <textarea class="form-control" id="productDescription" rows="3"></textarea>
+        </div>
+        
+        <button type="submit" class="btn btn-primary btn-block mt-24">
+          <i class="fas fa-save"></i> Save Product
+        </button>
+      </form>
+    </div>
+  </div>
+  
+  <div id="discountModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-percentage"></i> Apply Discount</h3>
+        <button class="modal-close" onclick="closeModal('discountModal')">&times;</button>
+      </div>
+      
+      <div style="padding: 20px;">
+        <div class="discount-type-selector">
+          <button type="button" class="btn btn-secondary discount-type-btn active" 
+                  onclick="selectDiscountType('cart')" data-type="cart">
+            <i class="fas fa-shopping-cart"></i> Cart Discount
+          </button>
+          <button type="button" class="btn btn-secondary discount-type-btn" 
+                  onclick="selectDiscountType('product')" data-type="product">
+            <i class="fas fa-cube"></i> Product Discount
+          </button>
+        </div>
+        
+        <div id="cartDiscountForm" class="discount-form">
+          <div class="form-group">
+            <label class="form-label"><i class="fas fa-percentage"></i> Discount Amount</label>
+            <div style="display: flex; gap: 10px;">
+              <input type="number" id="cartDiscountAmount" class="form-control" 
+                     placeholder="Amount" min="0" step="100" style="flex: 1;">
+              <select id="cartDiscountType" class="form-control" style="width: 120px;">
+                <option value="percent">%</option>
+                <option value="amount">Rp</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div id="productDiscountForm" class="discount-form" style="display: none;">
+          <div class="form-group">
+            <label class="form-label"><i class="fas fa-cube"></i> Select Product</label>
+            <select id="productDiscountSelect" class="form-control">
+              <option value="">Select a product...</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label"><i class="fas fa-percentage"></i> Discount Amount</label>
+            <div style="display: flex; gap: 10px;">
+              <input type="number" id="productDiscountAmount" class="form-control" 
+                     placeholder="Amount" min="0" step="100" style="flex: 1;">
+              <select id="productDiscountType" class="form-control" style="width: 120px;">
+                <option value="percent">%</option>
+                <option value="amount">Rp</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div class="form-group mt-24">
+          <button class="btn btn-primary btn-block" onclick="applyDiscount()">
+            <i class="fas fa-check"></i> Apply Discount
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="receiptModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-receipt"></i> Transaction Receipt</h3>
+        <button class="modal-close" onclick="closeModal('receiptModal')">&times;</button>
+      </div>
+      
+      <div id="receiptContent" style="font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.4;"></div>
+      
+      <div style="display: flex; gap: 10px; margin-top: 24px;">
+        <button class="btn btn-primary" onclick="printReceipt()">
+          <i class="fas fa-print"></i> Print Receipt
+        </button>
+        <button class="btn btn-secondary" onclick="emailReceipt()">
+          <i class="fas fa-envelope"></i> Email Receipt
+        </button>
+        <button class="btn btn-success" onclick="closeModal('receiptModal'); showPage('pos'); clearCart();">
+          <i class="fas fa-redo"></i> New Transaction
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <div id="quickActionsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+        <button class="modal-close" onclick="closeModal('quickActionsModal')">&times;</button>
+      </div>
+      
+      <div style="padding: 20px;">
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+          <button class="btn btn-secondary" onclick="quickAction('voidItem')">
+            <i class="fas fa-ban"></i> Void Item
+          </button>
+          <button class="btn btn-secondary" onclick="quickAction('priceOverride')">
+            <i class="fas fa-edit"></i> Price Override
+          </button>
+          <button class="btn btn-secondary" onclick="quickAction('holdTransaction')">
+            <i class="fas fa-pause"></i> Hold Transaction
+          </button>
+          <button class="btn btn-secondary" onclick="quickAction('recallTransaction')">
+            <i class="fas fa-history"></i> Recall Transaction
+          </button>
+          <button class="btn btn-secondary" onclick="quickAction('splitPayment')">
+            <i class="fas fa-money-bill-wave"></i> Split Payment
+          </button>
+          <button class="btn btn-secondary" onclick="quickAction('noSale')">
+            <i class="fas fa-cash-register"></i> No Sale
+          </button>
+        </div>
+        
+        <div class="mt-24">
+          <h4>Keyboard Shortcuts</h4>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
+            <div><kbd>F2</kbd> - Search Products</div>
+            <div><kbd>F3</kbd> - Clear Cart</div>
+            <div><kbd>F4</kbd> - Payment Screen</div>
+            <div><kbd>F5</kbd> - New Transaction</div>
+            <div><kbd>F6</kbd> - Discount</div>
+            <div><kbd>F7</kbd> - Void Last Item</div>
+            <div><kbd>Ctrl + P</kbd> - Print Receipt</div>
+            <div><kbd>Ctrl + S</kbd> - Save Draft</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="editProductModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-edit"></i> Edit Product</h3>
+        <button class="modal-close" onclick="closeModal('editProductModal')">&times;</button>
+      </div>
+      
+      <form id="editProductForm" onsubmit="event.preventDefault(); updateProduct();">
+        <input type="hidden" id="editProductId">
+        
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-barcode"></i> Barcode</label>
+          <input type="text" class="form-control" id="editBarcode" readonly>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-cube"></i> Product Name</label>
+          <input type="text" class="form-control" id="editName" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-tag"></i> Category</label>
+          <select class="form-control" id="editCategory">
+            <option value="Food & Beverage">Food & Beverage</option>
+            <option value="Household">Household</option>
+            <option value="Personal Care">Personal Care</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-shopping-cart"></i> Purchase Price</label>
+          <input type="number" class="form-control" id="editPurchasePrice" min="0" step="100">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-tag"></i> Selling Price</label>
+          <input type="number" class="form-control" id="editSellingPrice" required min="0" step="100">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-box"></i> Current Stock</label>
+          <input type="number" class="form-control" id="editStock" min="0" readonly>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-plus-circle"></i> Add Stock</label>
+          <input type="number" class="form-control" id="editAddStock" min="0" value="0">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-exclamation-triangle"></i> Minimum Stock</label>
+          <input type="number" class="form-control" id="editMinStock" min="0" value="10">
+        </div>
+        
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+          <button type="submit" class="btn btn-primary" style="flex: 1;">
+            <i class="fas fa-save"></i> Save Changes
+          </button>
+          <button type="button" class="btn btn-danger" onclick="deleteProduct()">
+            <i class="fas fa-trash"></i> Delete
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <div id="bulkRestockModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-box-open"></i> Bulk Restock</h3>
+        <button class="modal-close" onclick="closeModal('bulkRestockModal')">&times;</button>
+      </div>
+      
+      <div style="padding: 20px;">
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-list"></i> Select Products</label>
+          <div style="max-height: 300px; overflow-y: auto; border: 1px solid var(--macos-gray-2); border-radius: 8px; padding: 10px;">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th><input type="checkbox" id="selectAllProducts"></th>
+                  <th>Product</th>
+                  <th>Current Stock</th>
+                  <th>Add Quantity</th>
+                </tr>
+              </thead>
+              <tbody id="bulkRestockProducts"></tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-info-circle"></i> Restock Note</label>
+          <textarea class="form-control" id="restockNote" rows="3" placeholder="Enter restock note..."></textarea>
+        </div>
+        
+        <div class="form-group mt-24">
+          <button class="btn btn-primary btn-block" onclick="processBulkRestock()">
+            <i class="fas fa-check"></i> Process Restock
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="importModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-upload"></i> Import Products</h3>
+        <button class="modal-close" onclick="closeModal('importModal')">&times;</button>
+      </div>
+      
+      <div style="padding: 20px;">
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-file-excel"></i> Upload CSV File</label>
+          <input type="file" class="form-control" id="csvFile" accept=".csv">
+          <div style="font-size: 12px; color: var(--macos-gray-4); margin-top: 8px;">
+            Format: Barcode,Name,Category,PurchasePrice,SellingPrice,Stock,MinStock
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-cog"></i> Import Options</label>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <label style="display: flex; align-items: center; gap: 8px;">
+              <input type="checkbox" id="skipFirstRow" checked>
+              <span>Skip first row (headers)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px;">
+              <input type="checkbox" id="updateExisting" checked>
+              <span>Update existing products</span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="form-group mt-24">
+          <button class="btn btn-primary btn-block" onclick="importCSV()">
+            <i class="fas fa-upload"></i> Import Products
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="config.js"></script>
+  <script src="api.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
